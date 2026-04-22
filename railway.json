@@ -1,0 +1,10 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "g++ -o v v.cpp && npm install"
+  },
+  "deploy": {
+    "startCommand": "node bot.js",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
