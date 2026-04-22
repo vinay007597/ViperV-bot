@@ -2,7 +2,8 @@
   "name": "viperv-bot",
   "version": "1.0.0",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node bot.js",
+    "build": "g++ -o v v.cpp"
   },
   "dependencies": {
     "telegraf": "^4.15.3"
