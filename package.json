@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node bot.js",
-    "build": "g++ -o v v.cpp"
+    "build": "echo 'No build needed'"
   },
   "dependencies": {
     "telegraf": "^4.15.3"
