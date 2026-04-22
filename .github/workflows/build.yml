@@ -1,0 +1,24 @@
+name: Build Linux Binary
+
+on:
+  push:
+    paths:
+      - 'v.cpp'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install g++
+        run: sudo apt-get update && sudo apt-get install -y g++
+      
+      - name: Compile v.cpp
+        run: g++ -o v v.cpp -static -m64
+      
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: v-binary
+          path: v
