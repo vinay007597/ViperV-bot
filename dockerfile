@@ -1,19 +1,24 @@
 FROM ubuntu:22.04
 
-# Install compiler and node
+# Install everything
 RUN apt-get update && apt-get install -y g++ nodejs npm
 
-# Copy and compile your binary
-COPY v.cpp /tmp/
-RUN g++ -o /app/v /tmp/v.cpp -static
+# Create app directory
+WORKDIR /app
 
-# Copy bot files
+# Copy source code
+COPY v.cpp /app/
 COPY bot.js /app/
 COPY package.json /app/
 
-# Setup node
-WORKDIR /app
+# Compile the binary
+RUN g++ -o /app/v /app/v.cpp -static
+
+# Install Node dependencies
 RUN npm install
+
+# Make sure binary exists and is executable
+RUN chmod +x /app/v && ls -la /app/v
 
 # Run bot
 CMD ["node", "bot.js"]
